@@ -17,10 +17,12 @@ async function detectHands(video) {
         let landmarks = predictions[0].landmarks;
         let gesture = interpretGesture(landmarks);
         performActionBasedOnGesture(gesture);
-    console.log(predictions);
+        console.log(predictions);
     }
 
-requestAnimationFrame(() => detectHands(video));
+    setTimeout(() => {
+        requestAnimationFrame(() => detectHands(video));
+    }, 500); // Delay in milliseconds. For example, 500 means half a second delay.
 }
 
 loadModel();
