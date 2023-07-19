@@ -14,9 +14,12 @@ def cut_picture(image, x, y, width, height):
     
     return cropped_image
 
-image = cv2.imread('test/0001a82e-14af-4db8-bfec-8b09f67612d2.jpg')
+
+"""
+image = cv2.imread('2918043.jpg')
 
 new_image = cut_picture(image, 100, 200, 300, 400)
-cv2.imshow('Hand Image', new_image)
+cv2.imshow('cropped', new_image)
 cv2.waitKey(0)
 cv2.destroyAllWindows()
+"""
