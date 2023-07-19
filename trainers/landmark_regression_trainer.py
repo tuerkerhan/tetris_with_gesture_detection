@@ -10,15 +10,14 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-
 def cut_picture(image, x, y, width, height):
     # Calculate the coordinates of the bottom-right corner
-    h, w, _ = image.shape
-    x2 = int(w * (x + width))
-    y2 = int(h * (y + height))
+    h, w, channels = image.shape
+    x2 = int(w*(x + width))
+    y2 = int(h*(y + height))
 
     # Crop the image based on the coordinates
-    cropped_image = image[int(y * h): y2, int(x * w): x2]
+    cropped_image = image[int(y*h):y2, int(x*w):x2]
     
     return cropped_image
 
@@ -182,3 +181,4 @@ if __name__ == '__main__':
     print('Finished Training')
 
     net.save_model()
+
