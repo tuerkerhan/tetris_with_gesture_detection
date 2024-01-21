@@ -1,6 +1,10 @@
+'''
+The script handles the pre-processing of the
+like-gesture where 'leading_hand' is 'left'
+'''
+
 import cv2
 import json
-import shutil
 from tqdm import tqdm
 
 
@@ -72,9 +76,6 @@ for key, value in tqdm(list(data.items())):
 
     bboxes = object['bboxes']
     landmarks = object['landmarks']
-    
-
-    
     
     if hand == 'left':
         left_hand(f'train_val_like/{key}.jpg', f'train_val_like_left/{key}.jpg')

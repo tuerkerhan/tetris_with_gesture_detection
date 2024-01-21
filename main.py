@@ -1,79 +1,84 @@
+'''
+This script provides a Main class that, when instantiated, 
+sets up the necessary models for gesture detection, 
+and provides a predict method for performing the inference 
+in a loop on images captured from a video capture device. 
+The results are displayed on the screen in real time.
+'''
+
+
 from ultralytics import YOLO
 import cv2
 import torch
 import time
+import os
 from trainers.landmark_regression_trainer import LandmarkRegressionNet
 from trainers.gesture_classifier_trainer import GestureClassifier
 from inference import infer_action
 
-DETECTOR_MODEL_PATH = "models/detector/best.pt"
-REGRESSOR_MODEL_PATH = "models/landmark_regressor/model_2.pt"
-CLASSIFIER_MODEL_PATH = "models/gesture_classifier/20230719_1518193368_model.pt"
 
-detector = YOLO(DETECTOR_MODEL_PATH)
-regressor = LandmarkRegressionNet()
-classifier = GestureClassifier(num_landmarks=21, num_classes=5)
+class Main:
+    def __init__(self):
+        # Directories for trained model files
+        DETECTOR_MODEL_PATH = "models/detector/best.pt"
+        REGRESSOR_MODEL_PATH = "models/landmark_regressor/model_2.pt"
+        CLASSIFIER_MODEL_PATH = "models/gesture_classifier/20230719_1518193368_model.pt"
 
-regressor.load_state_dict(torch.load(REGRESSOR_MODEL_PATH))
-classifier.load_state_dict(torch.load(CLASSIFIER_MODEL_PATH))
+        # Initialize the models
+        self.detector = YOLO(DETECTOR_MODEL_PATH)
+        self.regressor = LandmarkRegressionNet()
+        self.classifier = GestureClassifier(num_landmarks=21, num_classes=5)
 
-cap = cv2.VideoCapture(0)
-cap.set(3, 640)
-cap.set(4, 480)
+        # Load weights into models
+        self.regressor.load_state_dict(torch.load(REGRESSOR_MODEL_PATH))
+        self.classifier.load_state_dict(torch.load(CLASSIFIER_MODEL_PATH))
 
+        # Start video capture
+        self.cap = cv2.VideoCapture(0)
+        self.cap.set(3, 640)
+        self.cap.set(4, 480)
 
-
-# game_time = time.time()
-# last_move = []
-predicted_gestures_window = []
-#counter = 0
-
-while True:
-    success, img = cap.read()
-
-    predicted_gestures, dotted_image = infer_action(img, detector, regressor, classifier)
-    predicted_gestures_window.append(predicted_gestures)
-
-    # TODO: Remove bounding boxes intersecting, remove both of the bounding boxes if one is inside of another
-    # sub_lists = [['like', 'like', 'like', 'like'], 
-    #              ['dislike', 'dislike', 'dislike', 'dislike'], 
-    #              ['thumb_left', 'thumb_left', 'thumb_left', 'thumb_left'], 
-    #              ['thumb_right', 'thumb_right', 'thumb_right', 'thumb_right']]
-
-    # for sub_list in sub_lists:
-    #     for idx in range(len(predicted_gestures_window) - len(sub_list) + 1):
-    #         if predicted_gestures_window[idx: idx + len(sub_list)] == sub_list:
-    #             print(sub_list[0])
-    #             predicted_gestures_window = []
-    #             break 
-    
-    if len(predicted_gestures_window) == 2:
-        print('============',predicted_gestures_window[0], '================') 
-        predicted_gestures_window = []
-
-
-    filtered_gestures = [gesture for gesture in predicted_gestures if gesture != 'no_gesture']
-    if predicted_gestures_window == [] and filtered_gestures != []:
-        predicted_gestures_window.append(filtered_gestures[0])
-    elif predicted_gestures_window != [] and filtered_gestures != []:
-        if predicted_gestures_window[0] == filtered_gestures[0]:
-            predicted_gestures_window.append(filtered_gestures[0])
-        else:
-            predicted_gestures_window = []
-    #elif predicted_gestures_window != [] and filtered_gestures == []:
-    #    predicted_gestures_window == []
-
+        # Start measuring game time and initialize variables
+        self.start_time = time.time()
+        self.predicted_gestures_window = []
+        self.last_button = None
+                
+    def predict(self):
+        i = 0
         
+        # Game Loop
+        while True:
+            i += 1
+            time.sleep(0.05)
+            _, img = self.cap.read()
 
-    
-    
-    # if game_time % 200:
-    #     last_move = predicted_gestures_window[:-1]
-    #     send(last_move)
-    #     game_time = 0
-    #     game_time = time.start()
-        
+            # Run inference on the image
+            predicted_gestures, dotted_image = infer_action(img, self.detector, self.regressor, self.classifier)
+            
+            # If we have 2 predictions, print the first and clear the list
+            if len(self.predicted_gestures_window) == 4:
+                self.last_button = self.predicted_gestures_window[0]
+                self.predicted_gestures_window = []
 
+            # Filter out 'no_gesture' results
+            filtered_gestures = [gesture for gesture in predicted_gestures if gesture != 'no_gesture']
+            if self.predicted_gestures_window == [] and filtered_gestures != []:
+                self.predicted_gestures_window.append(filtered_gestures[0])
+            elif self.predicted_gestures_window != [] and filtered_gestures != []:
+                if self.predicted_gestures_window[0] == filtered_gestures[0]:
+                    self.predicted_gestures_window.append(filtered_gestures[0])
+                else:
+                    self.predicted_gestures_window = []
+            elif self.predicted_gestures_window != [] and filtered_gestures == []:
+                self.predicted_gestures_window == []
+                self.last_button = None
 
-    cv2.imshow("Image", dotted_image)
-    cv2.waitKey(1)
+            os.system('cls')
+            # Show the image with landmarks
+            cv2.imshow("Image", dotted_image)
+            cv2.waitKey(1)
+            
+            current_time = time.time()
+            if current_time - self.start_time > 1 and self.last_button != None:
+                print('============',self.last_button, '================')
+                yield self.last_button

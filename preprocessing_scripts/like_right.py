@@ -1,3 +1,8 @@
+'''
+The script handles the pre-processing of the
+like-gesture where 'leading_hand' is 'right'
+'''
+
 import cv2
 import json
 import shutil

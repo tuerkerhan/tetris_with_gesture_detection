@@ -1,3 +1,11 @@
+'''
+Pre-processing needed for yolo training.
+Creates .txt files for each image with the same
+name as the image and includes bboxes of objects
+in the image.
+'''
+
+
 import json
 
 with open("like.json", "r") as file:
@@ -26,15 +34,3 @@ for id in ids:
             file.write(box + '\n')
 
     result = []
-
-
-
-        
-
-
-# def calculate_center(x, y, width, height):
-
-
-
-
-# {object_class_id} {x_center} {y_center} {width} {height}

@@ -1,3 +1,25 @@
+'''
+This script trains a model to predict the coordinates of hand 
+landmarks. It uses a convolutional neural network (CNN) for 
+feature extraction and a regression head to predict the landmark 
+coordinates.
+
+The LandmarkRegressionDataset class is the custom dataset class. 
+It resizes and transforms the images and calculates the relative 
+coordinates of the landmarks to the bounding box. It implements 
+the __getitem__() and __len__() methods required by PyTorch Dataset.
+
+The LandmarkRegressionNet class is the model class. It defines the
+architecture of the CNN and the regression head. The forward method
+is how the network computes outputs from the inputs. The save_model
+method saves the trained model to disk.
+
+The script creates an instance of the dataset, the dataloader, 
+the model, the loss function (Smooth L1 Loss), and the optimizer (Adam).
+It trains the model over a specified number of epochs, calculating 
+the loss, backpropagating the gradients, and updating the model parameters.
+'''
+
 import os
 import cv2
 import datetime
@@ -10,6 +32,8 @@ from torchvision import transforms
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+
+# Function to cut the picture according to bounding box coordinates
 def cut_picture(image, x, y, width, height):
     # Calculate the coordinates of the bottom-right corner
     h, w, channels = image.shape
@@ -22,6 +46,7 @@ def cut_picture(image, x, y, width, height):
     return cropped_image
 
 
+# Custom PyTorch Dataset for Landmark Regression
 class LandmarkRegressionDataset(Dataset):
     def __init__(self, root_folder, annotations_file, target_size):
         self.root_folder = root_folder
@@ -56,15 +81,11 @@ class LandmarkRegressionDataset(Dataset):
                 resized_image = self.transform(cropped_image)
                 self.resized_images_list.append(resized_image)
 
-                # Calculate relative coordinates to the bounding box
-                # (landmark_x - x) / width
-                # (landmark_y - y) / height
                 normalized_landmarks = landmarks.clone()
                 normalized_landmarks[:, 0] = (landmarks[:, 0] - x) / width
                 normalized_landmarks[:, 1] = (landmarks[:, 1] - y) / height
 
                 new_normalized = []
-                # normalized_landmarks = [[x,y],[x,y]...]
                 for i in range(21):
                     new_normalized.append(normalized_landmarks[:, 0][i])
                     new_normalized.append(normalized_landmarks[:, 1][i])
@@ -72,18 +93,18 @@ class LandmarkRegressionDataset(Dataset):
                 self.normalized_landmarks_list.append(new_normalized)
                 
 
-                #self.normalized_landmarks_list.append(normalized_landmarks)
-                # Normalized = [[x,y]]
-                # self.normalized_landmarks_list  = [[x,y,x,y,. ..], ..., ]
 
 
+    # Return number of samples
     def __len__(self):
         return len(list(self.annotations.keys()))
 
+    # Return a sample
     def __getitem__(self, idx):
         return self.resized_images_list[idx], self.normalized_landmarks_list[idx]
 
 
+# The neural network architecture
 class LandmarkRegressionNet(nn.Module):
     def __init__(self):
         super(LandmarkRegressionNet, self).__init__()
@@ -113,40 +134,33 @@ class LandmarkRegressionNet(nn.Module):
     def forward(self, x):
         # Feature extraction
         x = self.features(x)
-
         # Flatten
         x = x.view(x.size(0), -1)
-
         # Landmark regression
         landmarks = self.regression_head(x)
-
-        # Split the output into x and y coordinates for each landmark
-        # x_coords = landmarks[:, 0::2]  # Even indices represent x-coordinates
-        # y_coords = landmarks[:, 1::2]  # Odd indices represent y-coordinates
-
         return landmarks
         
-    
+    # Save the model
     def save_model(self):
         os.makedirs("models/landmark_regression", exist_ok=True)
         save_path = os.path.join("models/landmark_regression", self.date_string + "_model.pt")
         torch.save(self.state_dict(), save_path)
 
 
-
+# Training code
 if __name__ == '__main__':
     
-    # Set your desired target size for the resized images (e.g., 128x128)
+    # Setting the desired target size
     target_size = (128, 128)
 
-    # Path to your images folder and annotations JSON file
+    # Path to the images folder and annotations JSON file
     images_folder = 'dataset/train/images'
     annotations_file = 'dataset.json'
 
     # Create the custom dataset
     dataset = LandmarkRegressionDataset(images_folder, annotations_file, target_size)
 
-    # Set batch size according to your memory capacity
+    # Set batch size
     batch_size = 4
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
@@ -155,26 +169,23 @@ if __name__ == '__main__':
     criterion = torch.nn.SmoothL1Loss()
     optimizer = optim.Adam(net.parameters(), lr=0.001)
         
-    
-    print('training')
+
     for epoch in tqdm(range(6), desc="Epoch"):  # loop over the dataset multiple times
 
         running_loss = 0.0
         for i, data in enumerate(dataloader, 0):
-            # get the inputs; data is a list of [inputs, labels]
             inputs, labels = data
 
-            # zero the parameter gradients
             optimizer.zero_grad()
-
-            # forward + backward + optimize
+            
             outputs = net(inputs)
 
             loss = criterion(outputs, labels)
             loss.backward()
             optimizer.step()
             running_loss += loss.item()
-            if i % 2000 == 1999:    # print every 2000 mini-batches
+            # print every 2000 mini-batches
+            if i % 2000 == 1999:
                 print(f'[{epoch + 1}, {i + 1:5d}] loss: {running_loss / 2000:.3f}')
                 running_loss = 0.0
 

@@ -1,3 +1,27 @@
+'''
+This script trains a gesture classifier using a custom dataset. 
+The gestures it recognizes are: "like", "dislike", "thumb_left", 
+"thumb_right", and "no_gesture". It uses a simple neural network 
+with two fully connected layers.
+
+The GestureDataset class loads and preprocesses the gesture data.
+It normalizes the coordinates of the hand landmarks and labels 
+the gestures based on a predefined dictionary. This 
+class implements __getitem__() and __len__() methods 
+required by PyTorch Dataset.
+
+The GestureClassifier class defines the architecture of the 
+neural network. The forward method is how the network computes 
+outputs from the inputs. save_model saves the trained model to disk.
+
+The script then creates an instance of the dataset, the dataloader,
+the model, the loss function (Cross Entropy Loss), and 
+the optimizer (Adam). It trains the model over a specified number
+of epochs, calculating the loss, backpropagating the gradients, 
+and updating the model parameters.
+'''
+
+
 import json
 import torch
 import torch.nn as nn
@@ -8,6 +32,8 @@ from tqdm import tqdm
 import datetime
 import os
 
+
+# Define gesture labels
 gestures = {
     "like": 1,
     "dislike": 2,
@@ -17,6 +43,7 @@ gestures = {
 }
 
 
+# Custom PyTorch Dataset
 class GestureDataset(Dataset):
     def __init__(self, annotations_file):
         # Load data from the JSON file
@@ -26,15 +53,23 @@ class GestureDataset(Dataset):
         self.normalized_landmarks_list = []
         self.gesture_list = []
 
+        # Iterate through each item in the dataset
         for idx in tqdm(range(len(list(self.data.keys()))), desc='Data Loading'):
             key, annotation = list(self.data.items())[idx]
 
+            # Iterate through each annotation
             for i in range(len(annotation['landmarks'])):
+                # Ignore if there's no landmarks
                 if annotation['landmarks'][i] == []:
                     continue
+                # Ignore if the label is not recognized
                 if not annotation['labels'][i] in ['no_gesture', 'like', 'dislike', 'thumb_left', 'thumb_right']:
                     continue
+
+                # Extract bounding box
                 x, y, width, height = annotation['bboxes'][i]
+
+                # Normalize landmark coordinates
                 landmarks = torch.tensor(annotation['landmarks'][i])
                 normalized_landmarks = landmarks.clone()
                 normalized_landmarks[:, 0] = (landmarks[:, 0] - x) / width
@@ -44,19 +79,24 @@ class GestureDataset(Dataset):
                 new_normalized = normalized_landmarks.view(-1)
                 self.normalized_landmarks_list.append(new_normalized)
                 
+                # Convert gesture label to a tensor
                 gesture_label = gestures[annotation['labels'][i]] - 1
                 single_gesture_list = [gesture_label]
                 single_gesture_tensor = torch.tensor(single_gesture_list)
                 self.gesture_list.append(single_gesture_tensor)
+        
         self.gesture_list = torch.cat(self.gesture_list, dim=0)
 
+    # Return number of samples
     def __len__(self):
         return len(self.normalized_landmarks_list)
 
+    # Return a sample
     def __getitem__(self, idx):
         return self.normalized_landmarks_list[idx], self.gesture_list[idx]
 
 
+# The neural network architecture
 class GestureClassifier(nn.Module):
     def __init__(self, num_landmarks, num_classes):
         super(GestureClassifier, self).__init__()
@@ -66,10 +106,11 @@ class GestureClassifier(nn.Module):
         self.num_landmarks = num_landmarks
         self.num_classes = num_classes
 
-        # Define layers for your model (you can experiment with the architecture)
+        # Define network layers
         self.fc1 = nn.Linear(num_landmarks * 2, 64)
         self.fc2 = nn.Linear(64, num_classes)
 
+    # Forward pass
     def forward(self, x):
         # Flatten the input tensor (21 landmarks * 2 for x and y coordinates)
         x = x.view(-1, self.num_landmarks * 2)
@@ -83,22 +124,22 @@ class GestureClassifier(nn.Module):
 
         return x
     
+    # Save the model
     def save_model(self):
         os.makedirs("models/gesture_regression", exist_ok=True)
         save_path = os.path.join("models/gesture_regression", self.date_string + "_model.pt")
         torch.save(self.state_dict(), save_path)
 
 
+# Training code
 if __name__ == '__main__':
 
     # Create the custom dataset
     gesture_dataset = GestureDataset('dataset.json')
 
-    # Set batch size and other DataLoader options
+    # Create DataLoader with batch size and shuffling
     batch_size = 4
     shuffle = True
-
-    # Create the DataLoader
     gesture_dataloader = DataLoader(gesture_dataset, batch_size=batch_size, shuffle=shuffle)
 
     # Instantiate the Gesture Classifier Model
@@ -124,18 +165,16 @@ if __name__ == '__main__':
             outputs = net(inputs)
 
             # Calculate the loss
-            # print("++++ Output Shape: ", outputs.shape)
-            # print("++++ Label Shape: ", labels.shape)
             loss = criterion(outputs, labels)
 
             # Backward pass and optimization
             loss.backward()
             optimizer.step()
 
-            # Print statistics
+            # Running loss
             running_loss += loss.item()
 
-        # Print epoch statistics
+        # Print loss for each epoch
         avg_loss = running_loss / len(gesture_dataloader)
         print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {avg_loss:.4f}')
 
