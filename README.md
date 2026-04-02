@@ -9,6 +9,7 @@ Welcome to the Tetris with Hand Gestures repository! Our project's goal is to ac
 <img width="1580" height="1165" alt="image" src="https://github.com/user-attachments/assets/9b1c31da-9e9b-45dc-8533-622d6e255bca" />
 <img width="1757" height="1216" alt="image" src="https://github.com/user-attachments/assets/5f0b6f31-7361-443d-9370-b3d4440ef217" />
 
+## Video
 https://drive.proton.me/urls/Z2N0QBFC88#xnzYBicEIrJR
 
 
