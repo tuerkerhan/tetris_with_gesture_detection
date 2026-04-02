@@ -8,7 +8,10 @@ Welcome to the Tetris with Hand Gestures repository! Our project's goal is to ac
 <img width="1544" height="1157" alt="image" src="https://github.com/user-attachments/assets/67671951-cebb-498c-91e4-fd33fb7f95ad" />
 <img width="1580" height="1165" alt="image" src="https://github.com/user-attachments/assets/9b1c31da-9e9b-45dc-8533-622d6e255bca" />
 <img width="1757" height="1216" alt="image" src="https://github.com/user-attachments/assets/5f0b6f31-7361-443d-9370-b3d4440ef217" />
+
 https://drive.proton.me/urls/Z2N0QBFC88#xnzYBicEIrJR
+
+
 # Project-Structure
 ## Dataset Used
 We used the following dataset: [HaGRID](https://www.kaggle.com/datasets/kapitanov/hagrid) - HAnd Gesture Recognition Image Dataset. We used two labels from the dataset (`like` and `dislike`) and we generated two more gesture labels by modifying the labels `like` and `dislike`.
